@@ -1,12 +1,20 @@
-from PIL import Image
+from io import BytesIO
+from typing import Tuple
+
 import numpy as np
+from PIL import Image
+from tensorflow.keras.applications import MobileNetV3Large
+from tensorflow.keras.applications.mobilenet_v3 import preprocess_input
 
-IMG_SIZE = (224, 224)
+def preprocess_image(file_bytes: bytes, target_size: Tuple[int, int] = (224, 224)):
+    image = Image.open(BytesIO(file_bytes)).convert("RGB")
+    image = image.resize(target_size)
 
+    # Create float32 array in HWC format, just like training
+    arr = np.array(image, dtype=np.float32)
 
-def preprocess_image(file_path):
-    img = Image.open(file_path).convert("RGB")
-    img = img.resize(IMG_SIZE)
-    img_array = np.array(img) / 255.0
-    img_array = np.expand_dims(img_array, axis=0)
-    return img_array
+    # Use the same preprocess_input as in the notebook
+    arr = preprocess_input(arr)
+
+    # Add batch dimension (1, 224, 224, 3)
+    return np.expand_dims(arr, axis=0)

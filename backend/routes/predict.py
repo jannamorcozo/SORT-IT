@@ -1,30 +1,35 @@
-from fastapi import APIRouter, File, UploadFile
-import numpy as np
+from typing import Any, Dict, Optional
 
-from core.config import STAGE2_LABELS, STAGE3_LABELS
-from core.model_registry import get_stage3_model, stage1_model, stage2_model
+from fastapi import APIRouter, UploadFile, File, HTTPException, status
+from pydantic import BaseModel
+
 from services.image import preprocess_image
+from services.inference import classify_image
 
-router = APIRouter()
+router = APIRouter(tags=["prediction"])
 
 
-@router.post("/predict")
-async def predict(file: UploadFile = File(...)):
+class StageResult(BaseModel):
+    label: str
+    confidence: float
 
-    contents = await file.read()
-    with open("temp.jpg", "wb") as f:
-        f.write(contents)
 
-    img_array = preprocess_image("temp.jpg")
+class PredictionResponse(BaseModel):
+    stage1: StageResult
+    stage2: Optional[StageResult] = None
+    stage3: Optional[StageResult] = None
 
-    pred1 = stage1_model.predict(img_array)
-    if np.argmax(pred1) == 0:
-        return {"recyclable": False, "message": "Non-Recyclable"}
 
-    pred2 = stage2_model.predict(img_array)
-    material = STAGE2_LABELS[np.argmax(pred2)]
+@router.post("/predict", response_model=PredictionResponse)
+async def predict(file: UploadFile = File(...)) -> Dict[str, Any]:
+    if file.content_type not in ("image/jpeg", "image/png"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only JPEG and PNG images are supported.",
+        )
 
-    pred3 = get_stage3_model(material).predict(img_array)
-    subcategory = STAGE3_LABELS[material][np.argmax(pred3)]
+    file_bytes = await file.read()
+    image_array = preprocess_image(file_bytes, target_size=(224, 224))
 
-    return {"recyclable": True, "material": material, "subcategory": subcategory}
+    result = classify_image(image_array)
+    return result
