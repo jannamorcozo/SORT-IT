@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+pillow
+numpy
+tensorflow
+google-cloud-storage
+python-dotenv
+pydantic
