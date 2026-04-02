@@ -3,7 +3,7 @@ from pathlib import Path
 import os
 
 from google.cloud import storage
-from tensorflow.lite.python.interpreter import Interpreter
+from tflite_runtime.interpreter import Interpreter
 from config import get_settings
 
 settings = get_settings()
@@ -64,6 +64,7 @@ def get_stage3_metal_interpreter() -> Interpreter:
 @lru_cache
 def get_stage3_paper_interpreter() -> Interpreter:
     return _load_tflite_interpreter(settings.model_stage3_paper_path)
+
 
 @lru_cache
 def get_stage3_residual_interpreter() -> Interpreter:
