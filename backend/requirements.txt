@@ -2,7 +2,7 @@ fastapi
 uvicorn[standard]
 pillow
 numpy
-tensorflow== 2.20.0
+tensorflow==2.19.0
 google-cloud-storage
 python-dotenv
 pydantic
