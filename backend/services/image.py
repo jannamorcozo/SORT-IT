@@ -3,18 +3,18 @@ from typing import Tuple
 
 import numpy as np
 from PIL import Image
-from tensorflow.keras.applications import MobileNetV3Large
 from tensorflow.keras.applications.mobilenet_v3 import preprocess_input
 
 def preprocess_image(file_bytes: bytes, target_size: Tuple[int, int] = (224, 224)):
     image = Image.open(BytesIO(file_bytes)).convert("RGB")
-    image = image.resize(target_size)
+    resample_mode = Image.Resampling.BILINEAR if hasattr(Image, "Resampling") else Image.BILINEAR
+    image = image.resize(target_size, resample=resample_mode)
 
-    # Create float32 array in HWC format, just like training
+    # Convert to float32 HWC numpy array
     arr = np.array(image, dtype=np.float32)
 
-    # Use the same preprocess_input as in the notebook
+    # Normalize with MobileNetV3 preprocessing (same as training)
     arr = preprocess_input(arr)
 
-    # Add batch dimension (1, 224, 224, 3)
+    # Return batched tensor shape (1, H, W, C)
     return np.expand_dims(arr, axis=0)
