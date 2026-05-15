@@ -24,10 +24,10 @@ STAGE3_RESIDUAL_LABELS = ["Clean and Dry Flexible Plastic", "Leather", "Rubber",
 # Tunable thresholds for uncertainty handling. Adjust from calibration data.
 STAGE1_RECYCLABLE_LOW = 0.40
 STAGE1_RECYCLABLE_HIGH = 0.60
-STAGE2_MIN_CONFIDENCE = 0.50
-STAGE2_MIN_MARGIN = 0.10
-STAGE3_MIN_CONFIDENCE = 0.50
-STAGE3_MIN_MARGIN = 0.10
+STAGE2_MIN_CONFIDENCE = 0.55
+STAGE2_MIN_MARGIN = 0.05
+STAGE3_MIN_CONFIDENCE = 0.55
+STAGE3_MIN_MARGIN = 0.05
 
 
 def _run_inference(interpreter, input_array: np.ndarray) -> np.ndarray:
@@ -74,16 +74,10 @@ def classify_image(image_array: np.ndarray) -> Dict[str, Any]:
     """
     # Stage 1: recyclable vs non_recyclable : single sigmoid output
     stage1_raw = _run_inference(get_stage1_interpreter(), image_array)
-    
-    print("Stage1 RAW shape:", stage1_raw.shape)
-    print("Stage1 RAW values:", stage1_raw)
 
     p = float(stage1_raw[0])  # single value in [0, 1]
-    print("DEBUG Stage1 sigmoid:", p)
 
     stage1_label, stage1_conf = _classify_binary_probability(p)
-
-    print("DEBUG Final Stage1:", stage1_label, stage1_conf)
 
     if stage1_label != "recyclable":
         return {
@@ -96,11 +90,10 @@ def classify_image(image_array: np.ndarray) -> Dict[str, Any]:
     stage2_out = _run_inference(get_stage2_interpreter(), image_array)
     stage2_sorted = np.argsort(stage2_out)
     stage2_idx = int(stage2_sorted[-1])
-    stage2_top2_idx = int(stage2_sorted[-2])
     stage2_conf = float(stage2_out[stage2_idx])
-    stage2_top2_conf = float(stage2_out[stage2_top2_idx])
 
-    if stage2_conf < STAGE2_MIN_CONFIDENCE or (stage2_conf - stage2_top2_conf) < STAGE2_MIN_MARGIN:
+    # If top-class confidence is below threshold, mark stage2 uncertain
+    if stage2_conf < STAGE2_MIN_CONFIDENCE:
         return {
             "stage1": {"label": stage1_label, "confidence": stage1_conf},
             "stage2": {"label": "uncertain", "confidence": stage2_conf},
@@ -129,11 +122,10 @@ def classify_image(image_array: np.ndarray) -> Dict[str, Any]:
     stage3_out = _run_inference(interpreter, image_array)
     stage3_sorted = np.argsort(stage3_out)
     stage3_idx = int(stage3_sorted[-1])
-    stage3_top2_idx = int(stage3_sorted[-2])
     stage3_conf = float(stage3_out[stage3_idx])
-    stage3_top2_conf = float(stage3_out[stage3_top2_idx])
 
-    if stage3_conf < STAGE3_MIN_CONFIDENCE or (stage3_conf - stage3_top2_conf) < STAGE3_MIN_MARGIN:
+    # If top-class confidence is below threshold, mark stage3 uncertain
+    if stage3_conf < STAGE3_MIN_CONFIDENCE:
         stage3_label = "uncertain"
     else:
         stage3_label = labels[stage3_idx]
