@@ -21,9 +21,7 @@ STAGE3_METAL_LABELS = ["Aluminum_Tin", "Copper", "Steel"]
 STAGE3_PAPER_LABELS = ["Mixed Paper", "Old Corrugated Cartons", "Old Newspaper", "Selected White Ledger", "Used Beverage Cartons"]
 STAGE3_RESIDUAL_LABELS = ["Clean and Dry Flexible Plastic", "Leather", "Rubber", "Textiles"]
 
-# Tunable thresholds for uncertainty handling. Adjust from calibration data.
-STAGE1_RECYCLABLE_LOW = 0.40
-STAGE1_RECYCLABLE_HIGH = 0.60
+# Tunable thresholds for stages 2 and 3 uncertainty handling. Adjust from calibration data.
 STAGE2_MIN_CONFIDENCE = 0.55
 STAGE2_MIN_MARGIN = 0.05
 STAGE3_MIN_CONFIDENCE = 0.55
@@ -45,12 +43,10 @@ def _run_inference(interpreter, input_array: np.ndarray) -> np.ndarray:
 
 
 def _classify_binary_probability(p: float) -> tuple[str, float]:
-    # Return label and confidence; 'uncertain' if within gray zone.
-    if p >= STAGE1_RECYCLABLE_HIGH:
-        return "recyclable", p
-    if p <= STAGE1_RECYCLABLE_LOW:
-        return "non_recyclable", 1.0 - p
-    return "uncertain", max(p, 1.0 - p)
+    # Stage 1 must always return a hard binary decision.
+    if p >= 0.5:
+        return STAGE1_LABELS[1], p
+    return STAGE1_LABELS[0], 1.0 - p
 
 
 def _classify_multiclass(output: np.ndarray, labels: list[str]) -> tuple[str, float]:
